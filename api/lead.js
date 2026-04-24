@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { firstName, phone, vehicle, downPayment, biggestChallenge, sourceRoute } = req.body || {};
+  const { firstName, phone, vehicle, downPayment, biggestChallenge, sourceRoute, skippedQuickForm } = req.body || {};
 
   if (!firstName || !phone || phone.replace(/\D/g, '').length < 10) {
     return res.status(400).json({ error: 'Missing or invalid required fields' });
@@ -80,11 +80,15 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'No contact ID returned' });
     }
 
-    // 2) Add tags (additive — preserves existing tags on the contact)
+    // 2) Add tags (additive — preserves existing tags on the contact).
+    // `marty-quick-form-skip` signals Marty to ask §5-D qualification over
+    // SMS since the user skipped the in-form vehicle/down/challenge questions.
+    const baseTags = [sourceTag, 'marty-triggered'];
+    const tags = skippedQuickForm ? [...baseTags, 'marty-quick-form-skip'] : baseTags;
     const tagsRes = await fetch(`${GHL_API}/contacts/${contactId}/tags`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ tags: [sourceTag, 'marty-triggered'] }),
+      body: JSON.stringify({ tags }),
     });
 
     if (!tagsRes.ok) {

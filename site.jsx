@@ -427,9 +427,9 @@ function ObjectionHandler({ custom }) {
   );
 }
 
-// ─── CTA band (primary SMS, secondary pre-qualify) ──────────────
+// ─── CTA band (primary SMS — form is now inline above this on every page) ──
 function CTABand({ title = 'Ready when you are.', lead = 'Jordan texts back within 60 seconds during open hours. No call center, no pressure.' }) {
-  const { go, route } = useRoute();
+  const { route } = useRoute();
   return (
     <section style={{
       background: C.amber, color: C.navyDeep,
@@ -452,14 +452,6 @@ function CTABand({ title = 'Ready when you are.', lead = 'Jordan texts back with
         </svg>
         Text Jordan — {PHONE}
       </a>
-      <div style={{ textAlign: 'center', marginTop: 14 }}>
-        <a href="#" onClick={(e) => { e.preventDefault(); go('contact'); }} style={{
-          color: C.navy, textDecoration: 'underline', textUnderlineOffset: 3,
-          fontSize: 14, fontWeight: 600,
-        }}>
-          Or pre-qualify in 10 minutes →
-        </a>
-      </div>
     </section>
   );
 }
@@ -575,13 +567,17 @@ function Footer() {
   );
 }
 
-// ─── Lead form (contact page) ────────────────────────────────────
-function LeadForm() {
+// ─── Lead form (2-step: name+phone → optional details) ─────────
+// Design: Step 0 captures name+phone with a "just text me" skip. Step 1 is
+// optional enrichment (vehicle, down, challenge). Each step = ~50% drop-off
+// avoided vs. the old 5-step wizard. Marty's §5-D qualification picks up the
+// rest over SMS when the user skips.
+function LeadForm({ variant = 'full' }) {
   const { route } = useRoute();
-  const STORAGE_KEY = 'mm_leadform_v2';
+  const STORAGE_KEY = 'mm_leadform_v3';
   const DEFAULTS = { name: '', phone: '', vehicle: 'Car (sedan)', down: '$1,000 – $1,500', challenge: '' };
 
-  const [step, setStep] = useState(0);        // 0..4 steps, 5 = submitted
+  const [step, setStep] = useState(0);        // 0, 1, 2 (success)
   const [f, setF] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -590,40 +586,35 @@ function LeadForm() {
     return DEFAULTS;
   });
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
-  // Persist on change — survives connection drops mid-flow
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(f)); } catch (e) {}
   }, [f]);
 
   const nameRef = useRef(null);
-  const phoneRef = useRef(null);
 
   useEffect(() => {
     if (step === 0 && nameRef.current) nameRef.current.focus();
-    if (step === 1 && phoneRef.current) phoneRef.current.focus();
   }, [step]);
 
-  const TOTAL = 5;
-  const STEP_LABELS = ['Name', 'Phone', 'Vehicle', 'Down', 'Situation'];
+  const TOTAL = 2;
 
-  function validateStep(s) {
+  function validateStep0() {
     const e = {};
-    if (s === 0 && !f.name.trim()) e.name = 'First name required';
-    if (s === 1 && (!f.phone.trim() || f.phone.replace(/\D/g, '').length < 10)) e.phone = 'Valid 10-digit number';
+    if (!f.name.trim()) e.name = 'First name required';
+    if (!f.phone.trim() || f.phone.replace(/\D/g, '').length < 10) e.phone = 'Valid 10-digit number';
     return e;
   }
 
-  function next() {
-    const e = validateStep(step);
-    setErrors(e);
-    if (Object.keys(e).length === 0) setStep(step + 1);
-  }
-  function back() {
+  async function doSubmit({ skipped = false } = {}) {
+    const e = validateStep0();
+    if (Object.keys(e).length > 0) {
+      setErrors(e);
+      return;
+    }
     setErrors({});
-    if (step > 0) setStep(step - 1);
-  }
-  async function submit() {
+    setSubmitting(true);
     try {
       const res = await fetch('/api/lead', {
         method: 'POST',
@@ -635,14 +626,27 @@ function LeadForm() {
           downPayment: f.down,
           biggestChallenge: f.challenge,
           sourceRoute: route,
+          skippedQuickForm: skipped,
         }),
       });
       if (!res.ok) throw new Error(`Submit failed: ${res.status}`);
-      setStep(TOTAL); // success state
+      setStep(TOTAL);
       try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     } catch (err) {
       setErrors({ submit: 'Network hiccup. Tap "Text Jordan" below to reach us directly.' });
+    } finally {
+      setSubmitting(false);
     }
+  }
+
+  function continueToDetails() {
+    const e = validateStep0();
+    setErrors(e);
+    if (Object.keys(e).length === 0) setStep(1);
+  }
+  function back() {
+    setErrors({});
+    if (step > 0) setStep(step - 1);
   }
   function reset() {
     setF(DEFAULTS); setErrors({}); setStep(0);
@@ -692,78 +696,21 @@ function LeadForm() {
   const err = { fontSize: 12, color: '#A63D3D', marginTop: 6 };
   const selectChevron = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%230F2556' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>")`;
 
-  // ── Step contents ─────────────────────────────────────────────
-  const steps = [
-    // Step 1: Name
-    <>
-      <label style={lbl}>What's your first name?</label>
-      <input ref={nameRef} type="text" autoComplete="given-name" inputMode="text"
-        enterKeyHint="next"
-        style={fld(errors.name)} value={f.name}
-        onChange={e => setF({ ...f, name: e.target.value })}
-        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); next(); } }}
-        placeholder="First name" />
-      {errors.name && <div style={err}>{errors.name}</div>}
-    </>,
-    // Step 2: Phone
-    <>
-      <label style={lbl}>Best number to text you back?</label>
-      <input ref={phoneRef} type="tel" autoComplete="tel" inputMode="tel"
-        enterKeyHint="next"
-        pattern="[0-9 ()\\-]*"
-        style={fld(errors.phone)} value={f.phone}
-        onChange={e => setF({ ...f, phone: e.target.value })}
-        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); next(); } }}
-        placeholder="(717) 000-0000" />
-      {errors.phone && <div style={err}>{errors.phone}</div>}
-      <p style={{ fontSize: 12, color: C.charcoal70, marginTop: 8, lineHeight: 1.4 }}>
-        Jordan texts from this number personally. No auto-spam.
-      </p>
-    </>,
-    // Step 3: Vehicle (pre-selected Car)
-    <>
-      <label style={lbl}>What kind of vehicle?</label>
-      <select style={{ ...fld(false), appearance: 'none', backgroundImage: selectChevron, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: 36 }}
-        value={f.vehicle} onChange={e => { setF({ ...f, vehicle: e.target.value }); }}>
-        <option>Car (sedan)</option>
-        <option>SUV</option>
-        <option>Truck</option>
-        <option>Van / Minivan</option>
-        <option>Haven't decided</option>
-      </select>
-      <p style={{ fontSize: 12, color: C.charcoal70, marginTop: 8, lineHeight: 1.4 }}>
-        You can change your mind when you visit the lot.
-      </p>
-    </>,
-    // Step 4: Down (pre-selected $1,000–$1,500)
-    <>
-      <label style={lbl}>Down payment you can bring</label>
-      <select style={{ ...fld(false), appearance: 'none', backgroundImage: selectChevron, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: 36 }}
-        value={f.down} onChange={e => { setF({ ...f, down: e.target.value }); }}>
-        <option>Under $1,000</option>
-        <option>$1,000 – $1,500</option>
-        <option>$1,500 – $2,000</option>
-        <option>$2,000 – $3,000</option>
-        <option>$3,000+</option>
-      </select>
-      <p style={{ fontSize: 12, color: C.charcoal70, marginTop: 8, lineHeight: 1.4 }}>
-        Your down is the drive-away — tax, tags, title, plate. Loan terms (doc fee, interest, any late fees) are in the paperwork.
-      </p>
-    </>,
-    // Step 5: Challenge (optional)
-    <>
-      <label style={lbl}>What's been your biggest challenge? <span style={{ color: C.charcoal70, fontWeight: 400 }}>(optional)</span></label>
-      <textarea rows="4" style={{ ...fld(false), resize: 'vertical', minHeight: 110, fontSize: 16, lineHeight: 1.45 }}
-        value={f.challenge} onChange={e => setF({ ...f, challenge: e.target.value })}
-        placeholder="Credit got dinged. Car died. Whatever's going on — Jordan's heard it before." />
-    </>,
-  ];
-
-  const isLast = step === TOTAL - 1;
+  const btnPrimary = {
+    flex: 1, padding: '16px 20px', background: C.navy, color: C.white,
+    border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 700,
+    cursor: submitting ? 'wait' : 'pointer', letterSpacing: '0.01em', minHeight: 52,
+    opacity: submitting ? 0.75 : 1,
+  };
+  const btnGhost = {
+    padding: '14px 18px', background: 'transparent', border: `1.5px solid ${C.line}`,
+    color: C.navy, borderRadius: 10, fontSize: 14, fontWeight: 600,
+    cursor: 'pointer', minHeight: 48, width: '100%',
+  };
 
   return (
-    <div style={{ padding: '20px', background: C.offWhite }}>
-      {/* Reassurance (first step only) */}
+    <div style={{ padding: variant === 'inline' ? '20px' : '20px', background: C.offWhite }}>
+      {/* Reassurance (step 0 only) */}
       {step === 0 && (
         <div style={{
           background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, marginBottom: 16,
@@ -775,7 +722,7 @@ function LeadForm() {
             fontSize: 13, fontWeight: 700,
           }}>J</div>
           <div style={{ fontSize: 13, color: C.charcoal, lineHeight: 1.4 }}>
-            Takes about <strong style={{ color: C.navy }}>30 seconds</strong>. Jordan texts you back within <strong style={{ color: C.navy }}>60</strong>.
+            Takes about <strong style={{ color: C.navy }}>15 seconds</strong>. Jordan texts you back within <strong style={{ color: C.navy }}>60</strong>.
           </div>
         </div>
       )}
@@ -794,36 +741,139 @@ function LeadForm() {
         fontSize: 11, fontWeight: 600, color: C.charcoal70, letterSpacing: '0.16em',
         textTransform: 'uppercase', marginBottom: 14,
       }}>
-        Step {step + 1} of {TOTAL} · {STEP_LABELS[step]}
+        {step === 0 ? 'Step 1 of 2 · Your info' : 'Step 2 of 2 · Quick details (optional)'}
       </div>
 
-      {/* Active step */}
-      <div style={{ marginBottom: 22 }}>{steps[step]}</div>
+      {step === 0 && (
+        <>
+          {/* Name */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={lbl}>First name</label>
+            <input ref={nameRef} type="text" autoComplete="given-name" inputMode="text"
+              enterKeyHint="next"
+              style={fld(errors.name)} value={f.name}
+              onChange={e => setF({ ...f, name: e.target.value })}
+              placeholder="First name" />
+            {errors.name && <div style={err}>{errors.name}</div>}
+          </div>
+          {/* Phone */}
+          <div style={{ marginBottom: 8 }}>
+            <label style={lbl}>Mobile number (to text you back)</label>
+            <input type="tel" autoComplete="tel" inputMode="tel"
+              enterKeyHint="done"
+              pattern="[0-9 ()\\-]*"
+              style={fld(errors.phone)} value={f.phone}
+              onChange={e => setF({ ...f, phone: e.target.value })}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); continueToDetails(); } }}
+              placeholder="(717) 000-0000" />
+            {errors.phone && <div style={err}>{errors.phone}</div>}
+            <p style={{ fontSize: 12, color: C.charcoal70, marginTop: 8, lineHeight: 1.4 }}>
+              Jordan texts from this number personally. No auto-spam.
+            </p>
+          </div>
 
-      {/* Controls */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        {step > 0 && (
-          <button type="button" onClick={back} style={{
-            padding: '16px 18px', background: 'transparent', border: `1.5px solid ${C.line}`,
-            color: C.navy, borderRadius: 10, fontSize: 15, fontWeight: 600,
-            cursor: 'pointer', minHeight: 52, minWidth: 96,
-          }}>
-            ← Back
-          </button>
-        )}
-        <button type="button" onClick={isLast ? submit : next} style={{
-          flex: 1, padding: '16px 20px', background: C.navy, color: C.white,
-          border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 700,
-          cursor: 'pointer', letterSpacing: '0.01em', minHeight: 52,
-        }}>
-          {isLast ? 'Send to Jordan' : 'Continue →'}
-        </button>
-      </div>
+          {errors.submit && <div style={{ ...err, marginBottom: 10 }}>{errors.submit}</div>}
+
+          {/* Primary: continue to details. Secondary: skip & submit. */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+            <button type="button" onClick={continueToDetails} disabled={submitting}
+              style={btnPrimary}>
+              Text me back →
+            </button>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <button type="button" onClick={() => doSubmit({ skipped: true })} disabled={submitting}
+              style={btnGhost}>
+              {submitting ? 'Sending…' : 'Just text me — I\'ll share the rest live'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {step === 1 && (
+        <>
+          {/* Vehicle */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={lbl}>What kind of vehicle?</label>
+            <select style={{ ...fld(false), appearance: 'none', backgroundImage: selectChevron, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: 36 }}
+              value={f.vehicle} onChange={e => setF({ ...f, vehicle: e.target.value })}>
+              <option>Car (sedan)</option>
+              <option>SUV</option>
+              <option>Truck</option>
+              <option>Van / Minivan</option>
+              <option>Haven't decided</option>
+            </select>
+          </div>
+          {/* Down */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={lbl}>Down payment you can bring</label>
+            <select style={{ ...fld(false), appearance: 'none', backgroundImage: selectChevron, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: 36 }}
+              value={f.down} onChange={e => setF({ ...f, down: e.target.value })}>
+              <option>Under $1,000</option>
+              <option>$1,000 – $1,500</option>
+              <option>$1,500 – $2,000</option>
+              <option>$2,000 – $3,000</option>
+              <option>$3,000+</option>
+            </select>
+            <p style={{ fontSize: 12, color: C.charcoal70, marginTop: 8, lineHeight: 1.4 }}>
+              Your down is the drive-away — tax, tags, title, plate. Loan terms (doc fee, interest, any late fees) are in the paperwork.
+            </p>
+          </div>
+          {/* Challenge */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={lbl}>Anything going on we should know? <span style={{ color: C.charcoal70, fontWeight: 400 }}>(optional)</span></label>
+            <textarea rows="3" style={{ ...fld(false), resize: 'vertical', minHeight: 88, fontSize: 16, lineHeight: 1.45 }}
+              value={f.challenge} onChange={e => setF({ ...f, challenge: e.target.value })}
+              placeholder="Credit got dinged. Car died. Whatever's going on — Jordan's heard it before." />
+          </div>
+
+          {errors.submit && <div style={{ ...err, marginBottom: 10 }}>{errors.submit}</div>}
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" onClick={back} disabled={submitting} style={{
+              padding: '16px 18px', background: 'transparent', border: `1.5px solid ${C.line}`,
+              color: C.navy, borderRadius: 10, fontSize: 15, fontWeight: 600,
+              cursor: 'pointer', minHeight: 52, minWidth: 96,
+            }}>
+              ← Back
+            </button>
+            <button type="button" onClick={() => doSubmit({ skipped: false })} disabled={submitting}
+              style={btnPrimary}>
+              {submitting ? 'Sending…' : 'Send to Jordan'}
+            </button>
+          </div>
+        </>
+      )}
 
       <p style={{ fontSize: 11, color: C.charcoal70, marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
         By sending, you agree Mountville Motors can text or call you about your inquiry. Standard rates apply.
       </p>
     </div>
+  );
+}
+
+// ─── Inline form section (landing pages) ─────────────────────────
+// Wraps LeadForm in an eyebrow-headed section for embed on each landing page.
+// Kills the /contact nav-away click (biggest conversion leak identified in
+// marketer review Tier 1 #3).
+function InlineLeadFormSection({ id = 'apply' }) {
+  return (
+    <section id={id} style={{ background: C.offWhite, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+      <div style={{ padding: '28px 20px 8px' }}>
+        <div style={{
+          fontSize: 11, fontWeight: 600, letterSpacing: '0.18em', color: C.amber,
+          textTransform: 'uppercase', marginBottom: 10,
+          borderLeft: `2px solid ${C.amber}`, paddingLeft: 8,
+        }}>Pre-qualify here</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.navy, margin: 0, letterSpacing: '-0.015em', lineHeight: 1.2 }}>
+          Fifteen seconds. A text back in sixty.
+        </h2>
+        <p style={{ fontSize: 14, color: C.charcoal70, margin: '10px 0 0', lineHeight: 1.5 }}>
+          Just your name and number gets you started. Jordan takes it from there.
+        </p>
+      </div>
+      <LeadForm variant="inline" />
+    </section>
   );
 }
 
@@ -903,6 +953,8 @@ function HomePage() {
 
       <ObjectionHandler />
 
+      <InlineLeadFormSection />
+
       <CTABand
         title="Come see us. Or just text."
         lead="Jordan answers texts personally during open hours. No call center, no pressure."
@@ -936,6 +988,8 @@ function CreditDeniedPage() {
         ['Will this hurt my credit further?', 'No surprise hits. We verify income, address, and identity. That\'s the work.'],
         ['What if my last repo was recent?', 'Tell us the story. A real one, as recent as last month, has often still worked here. Bring the pay stubs.'],
       ]} />
+      <InlineLeadFormSection />
+
       <CTABand
         title="One more try. No lecture."
         lead="Text your name and the situation. Jordan replies in plain English."
@@ -968,6 +1022,8 @@ function CarDiedPage() {
         ['What if my current car has a trade-in value of zero?', 'No problem. We don\'t need a trade. Your down payment stands on its own.'],
         ['Do I need to borrow rides to get there?', 'Tell us where you are. If it\'s Lancaster or York County, we\'ll figure it out.'],
       ]} />
+      <InlineLeadFormSection />
+
       <CTABand
         title="Let's get you mobile again."
         lead="Text the year/make/model that died and the paycheck schedule you\'re on."
@@ -1000,6 +1056,8 @@ function SomethingNicerPage() {
         ['Will the payments balloon?', 'No balloon. Fixed weekly schedule from day one. (Late fees and interest are spelled out in your loan paperwork.)'],
         ['What makes a car "nicer" here?', 'Lower mileage, cleaner interior, newer model year inside our 2006–2016 range. Same approval rules.'],
       ]} />
+      <InlineLeadFormSection />
+
       <CTABand
         title="Come see the nicer end of the lot."
         lead="Text what you drive now. We'll tell you what's an honest step up."
@@ -1032,6 +1090,8 @@ function FamilyPage() {
         ['What about safety?', 'Every vehicle gets a safety + drivability check — brakes, tires, belts, lights. Comfort extras (sunroof, heated seats, tire pressure sensors, etc.) are sold as-is — we\'ll show you what\'s working before you commit.'],
         ['Weekly payment on a minivan?', 'Still in the $80–$100 weekly range on most. A few higher-mileage vans come in lower.'],
       ]} />
+      <InlineLeadFormSection />
+
       <CTABand
         title="Room for the whole crew."
         lead="Text how many car seats you're working with. We'll start there."
@@ -1078,6 +1138,7 @@ function AboutPage() {
         name="Keisha"
         detail="Repeat customer · 2011, 2016, 2022"
       />
+      <InlineLeadFormSection />
       <CTABand />
       <Footer />
     </>
@@ -1094,10 +1155,10 @@ function ContactPage() {
           borderLeft: `2px solid ${C.amber}`, paddingLeft: 8,
         }}>Pre-qualify</div>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15 }}>
-          Ten minutes. A text back in sixty seconds.
+          Fifteen seconds. A text back in sixty.
         </h1>
         <p style={{ fontSize: 15, color: C.silverLight, margin: '12px 0 0', lineHeight: 1.5 }}>
-          No score pulled to ask the question. We reach out, you tell us about your situation, we tell you what it would look like.
+          Just your name and number to get started. No score pulled, no commitment. Jordan takes it from there.
         </p>
       </section>
       <LeadForm />
