@@ -310,7 +310,7 @@ function OfferStack() {
         textTransform: 'uppercase', marginBottom: 16,
       }}>The numbers, plain</div>
       <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.015em' }}>
-        All in. No surprises at signing.
+        Drive-away amount. Doc fee + interest are spelled out in your loan paperwork.
       </h2>
 
       <div style={{
@@ -330,7 +330,7 @@ function OfferStack() {
           note="Or $160 – $200 biweekly. We match the schedule you get paid on." />
         <StackRow label="Vehicle range" value="$6,999 – $11,999"
           note="2006–2016 sedans, SUVs, vans, trucks. Inspected before the lot." />
-        <StackRow label="Timeline" value="Same-day or next-day"
+        <StackRow label="Timeline" value="Typically same-day or next-day"
           note="For qualified buyers who bring the right paperwork." />
       </div>
 
@@ -379,7 +379,7 @@ function ObjectionHandler({ custom }) {
   const lines = custom || [
     ['What\'s the catch?', 'Nothing. We\'re in-house, so there\'s no bank involved.'],
     ['How can you approve me?', 'We approve on income, not score. Steady paycheck is what counts.'],
-    ['Any hidden fees?', 'Your down covers tax, tags, title, plate. No surprises at signing.'],
+    ['Any hidden fees?', 'Your down is the drive-away — covers tax, tags, title, plate. Doc fee and interest are in the loan, fully disclosed in the paperwork before you sign.'],
   ];
   return (
     <section style={{ background: C.white, padding: '28px 20px', borderTop: `1px solid ${C.line}` }}>
@@ -725,7 +725,7 @@ function LeadForm() {
         <option>$3,000+</option>
       </select>
       <p style={{ fontSize: 12, color: C.charcoal70, marginTop: 8, lineHeight: 1.4 }}>
-        Your down covers tax, tags, title, plate. That's it.
+        Your down is the drive-away — tax, tags, title, plate. Loan terms (doc fee, interest, any late fees) are in the paperwork.
       </p>
     </>,
     // Step 5: Challenge (optional)
@@ -942,7 +942,7 @@ function CarDiedPage() {
       />
       <OfferStack />
       <ObjectionHandler custom={[
-        ['Can this actually happen this week?', 'For qualified buyers with paperwork ready, yes. Same-day or next-day. No theater.'],
+        ['Can this actually happen this week?', 'For qualified buyers with paperwork ready and a vehicle that fits, yes. Typically same-day or next-day. No theater.'],
         ['What if my current car has a trade-in value of zero?', 'No problem. We don\'t need a trade. Your down payment stands on its own.'],
         ['Do I need to borrow rides to get there?', 'Tell us where you are. If it\'s Lancaster or York County, we\'ll figure it out.'],
       ]} />
@@ -975,7 +975,7 @@ function SomethingNicerPage() {
       <OfferStack />
       <ObjectionHandler custom={[
         ['Am I reaching above my means?', 'Nope. Our whole range ($6,999–$11,999) is priced for weekly paychecks. No stretch, no trap.'],
-        ['Will the payments balloon?', 'Fixed from day one. What you sign for is what you pay.'],
+        ['Will the payments balloon?', 'No balloon. Fixed weekly schedule from day one. (Late fees and interest are spelled out in your loan paperwork.)'],
         ['What makes a car "nicer" here?', 'Lower mileage, cleaner interior, newer model year inside our 2006–2016 range. Same approval rules.'],
       ]} />
       <CTABand
@@ -1007,7 +1007,7 @@ function FamilyPage() {
       <OfferStack />
       <ObjectionHandler custom={[
         ['Are family vehicles more down?', 'Same $1,000–$3,000 range. SUVs and vans land on the higher end. We tell you the number before you come in.'],
-        ['What about safety?', 'Every vehicle is inspected. Brakes, tires, belts, lights. Family cars get our closest look.'],
+        ['What about safety?', 'Every vehicle gets a safety + drivability check — brakes, tires, belts, lights. Comfort extras (sunroof, heated seats, tire pressure sensors, etc.) are sold as-is — we\'ll show you what\'s working before you commit.'],
         ['Weekly payment on a minivan?', 'Still in the $80–$100 weekly range on most. A few higher-mileage vans come in lower.'],
       ]} />
       <CTABand
@@ -1039,7 +1039,7 @@ function AboutPage() {
             'We\'re not a subprime chain. No quotas, no scripts.',
             'We\'re not flipping luxury cars. We sell reliable 2006–2016 daily drivers.',
             'We\'re not running a call center. Jordan answers the phone.',
-            'We\'re not hiding fees. Your down covers tax, tags, title, plate.',
+            'Every fee disclosed in your loan paperwork. Your down is the drive-away.',
           ].map((l, i) => (
             <li key={i} style={{
               display: 'flex', gap: 10, padding: '10px 0', borderBottom: `1px solid ${C.line}`,
