@@ -93,6 +93,27 @@ function LogoMark({ size = 38 }) {
   );
 }
 
+// ─── Click-to-text top banner (sticky, biggest mobile conversion lift) ──
+function TopBanner() {
+  const { route } = useRoute();
+  return (
+    <a href={smsHref(route)} style={{
+      position: 'sticky', top: 0, zIndex: 60,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+      background: C.amber, color: C.navyDeep, textDecoration: 'none',
+      padding: '10px 12px', fontSize: 14, fontWeight: 700, letterSpacing: '0.01em',
+      minHeight: 44, lineHeight: 1.2,
+      borderBottom: `2px solid ${C.amberDark}`,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span>$1,000 down · Text Jordan: {PHONE}</span>
+    </a>
+  );
+}
+
 // ─── Trust strip (above header) ───────────────────────────────────
 function TrustStrip() {
   return (
@@ -114,9 +135,10 @@ function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <>
+      <TopBanner />
       <TrustStrip />
       <header style={{
-        position: 'sticky', top: 0, zIndex: 50,
+        position: 'sticky', top: 44, zIndex: 50,
         background: C.white, borderBottom: `1px solid ${C.line}`,
         padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10,
       }}>
@@ -152,7 +174,7 @@ function Header() {
       </header>
       {menuOpen && (
         <div style={{
-          position: 'sticky', top: 58, zIndex: 49,
+          position: 'sticky', top: 102, zIndex: 49,
           background: C.white, borderBottom: `1px solid ${C.line}`,
           padding: '8px 16px 16px',
         }}>
