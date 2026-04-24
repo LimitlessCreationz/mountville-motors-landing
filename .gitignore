@@ -1,0 +1,23 @@
+# Vercel
+.vercel
+.env
+.env.local
+.env.production
+.env.development
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+.next/

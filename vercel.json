@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/credit-denied", "destination": "/index.html" },
+    { "source": "/car-died", "destination": "/index.html" },
+    { "source": "/something-nicer", "destination": "/index.html" },
+    { "source": "/family", "destination": "/index.html" },
+    { "source": "/contact", "destination": "/index.html" },
+    { "source": "/about", "destination": "/index.html" },
+    { "source": "/home", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ]
+}

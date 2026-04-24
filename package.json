@@ -1,0 +1,10 @@
+{
+  "name": "mountville-motors-landing",
+  "version": "1.0.0",
+  "description": "Mountville Motors landing pages — Build 6a (Phase A). Static HTML + React via CDN + Vercel serverless function for GHL lead submission.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "20.x"
+  }
+}

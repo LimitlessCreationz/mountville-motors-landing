@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mountville Motors — Family-owned BHPH dealer in Columbia, PA · Since 2001</title>
+<meta name="description" content="Buy here, pay here car dealer in Columbia, PA. Family-owned since 2001. $1,000 down · $80–$100/week · drive this week. We work with all credit situations." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #F7F5F2; font-family: 'Inter', system-ui, sans-serif; color: #2B2F36; }
+  * { box-sizing: border-box; }
+  /* Production: full-screen mobile-first */
+  #root { min-height: 100vh; }
+  .mm-page-host { width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; background: #F7F5F2; box-shadow: 0 0 32px rgba(0,0,0,0.06); }
+  /* Canvas mode (?canvas=1) keeps the dark frame */
+  body.canvas-mode { background: #1a1a1a; color: #e5e5e5; }
+  .mm-frame-host { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 16px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="site.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const VALID_ROUTES = ['home', 'credit-denied', 'car-died', 'something-nicer', 'family', 'contact', 'about'];
+
+function getInitialRoute() {
+  const path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+  if (!path) return 'home';
+  return VALID_ROUTES.includes(path) ? path : 'home';
+}
+
+function isCanvasMode() {
+  return new URLSearchParams(window.location.search).get('canvas') === '1';
+}
+
+function FramedSite({ initial, label }) {
+  return (
+    <div className="mm-frame-host">
+      <IOSDevice width={375} height={812} dark={false}>
+        <MMSite initial={initial} scopeId={label} />
+      </IOSDevice>
+    </div>
+  );
+}
+
+function CanvasApp() {
+  return (
+    <DesignCanvas title="Mountville Motors — Mobile Prototype v1"
+      subtitle="Mobile-first clickable prototype · tap through any frame · header menu routes to all pages"
+      defaultZoom={0.55}>
+      <DCSection id="flow" title="Entry pages · 375 × 812">
+        <DCArtboard id="home"            label="1. Homepage"                width={375} height={812}><FramedSite initial="home" label="home" /></DCArtboard>
+        <DCArtboard id="credit-denied"   label="2. Credit denied elsewhere" width={375} height={812}><FramedSite initial="credit-denied" label="credit-denied" /></DCArtboard>
+        <DCArtboard id="car-died"        label="3. Car just died"           width={375} height={812}><FramedSite initial="car-died" label="car-died" /></DCArtboard>
+        <DCArtboard id="something-nicer" label="4. Something nicer"         width={375} height={812}><FramedSite initial="something-nicer" label="something-nicer" /></DCArtboard>
+        <DCArtboard id="family"          label="5. Family / 3-row"          width={375} height={812}><FramedSite initial="family" label="family" /></DCArtboard>
+      </DCSection>
+      <DCSection id="support" title="Supporting screens">
+        <DCArtboard id="contact" label="Pre-qualify form" width={375} height={812}><FramedSite initial="contact" label="contact" /></DCArtboard>
+        <DCArtboard id="about"   label="About"            width={375} height={812}><FramedSite initial="about" label="about" /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+function ProductionApp() {
+  const route = getInitialRoute();
+  return (
+    <div className="mm-page-host">
+      <MMSite initial={route} scopeId={route} />
+    </div>
+  );
+}
+
+function App() {
+  const canvas = isCanvasMode();
+  React.useEffect(() => {
+    if (canvas) document.body.classList.add('canvas-mode');
+  }, [canvas]);
+  return canvas ? <CanvasApp /> : <ProductionApp />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
